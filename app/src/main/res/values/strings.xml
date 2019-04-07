@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">RxJavaExplore</string>
+    <string name="please_fill_in_name">请填写姓名</string>
+    <string name="please_fill_in_age">请填写年龄</string>
+    <string name="please_fill_in_job">请填写工作</string>
 </resources>

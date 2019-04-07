@@ -36,7 +36,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
  */
 public class RxJavaUseActivity extends AppCompatActivity {
 
-    private static final String TAG = "fuzhi";
+    private static final String TAG = "devil";
     // 设置变量 = 模拟轮询服务器次数
     private int i = 0;
 
