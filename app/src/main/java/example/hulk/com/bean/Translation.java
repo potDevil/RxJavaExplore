@@ -21,4 +21,8 @@ public class Translation {
     public void show() {
         Log.i("fuzhi", content.out);
     }
+
+    public String returnString() {
+        return content.out;
+    }
 }

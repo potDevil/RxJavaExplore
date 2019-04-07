@@ -13,10 +13,13 @@ import example.fastec.hulk.com.rxjava.R;
 import example.hulk.com.bean.Translation;
 import example.hulk.com.net.GetRequstInterface;
 import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.ObservableSource;
 import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.BiFunction;
 import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
@@ -28,6 +31,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
  * 实现网络轮询(无条件)                          参考:https://www.jianshu.com/p/11b3ec672812
  * 实现网络轮询(有条件)                          参考:https://www.jianshu.com/p/dbeaaa4afad5
  * 实现网络请求的嵌套(比如注册+登录一步实现)       参考:https://www.jianshu.com/p/5f5d61f04f96
+ * 实现合并数据源&同时展示                      参考:https://www.jianshu.com/p/fc2e551b907c
+ * 模拟三级缓存读取                             参考:https://www.jianshu.com/p/6f3b6b934787
  */
 public class RxJavaUseActivity extends AppCompatActivity {
 
@@ -38,6 +43,8 @@ public class RxJavaUseActivity extends AppCompatActivity {
     private Observable<Translation> observable;
     private Observable<Translation> observableRegister;
     private Observable<Translation> observableLogin;
+    private Observable<Translation> observableData;
+    private Observable<Translation> observableInformation;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -46,7 +53,9 @@ public class RxJavaUseActivity extends AppCompatActivity {
         createNet();
 //        noConditionPull();
 //        conditionPull();
-        nestRequest();
+//        nestRequest();
+//        mergeData();
+        threeCache();
     }
 
     private void createNet() {
@@ -60,6 +69,8 @@ public class RxJavaUseActivity extends AppCompatActivity {
         observable = requstInterface.getCall();
         observableRegister = requstInterface.getRegister();
         observableLogin = requstInterface.getLogin();
+        observableData = requstInterface.getData().subscribeOn(Schedulers.io());
+        observableInformation = requstInterface.getInformation().subscribeOn(Schedulers.io());
     }
 
     /**
@@ -197,6 +208,85 @@ public class RxJavaUseActivity extends AppCompatActivity {
                     @Override
                     public void accept(Throwable throwable) {
                         Log.d(TAG, "第二次网络请求失败");
+                    }
+                });
+    }
+
+    /**
+     * 实现合并数据源&同时展示
+     */
+    private void mergeData() {
+        Observable.zip(observableData, observableInformation,
+                new BiFunction<Translation, Translation, String>() {
+                    @Override
+                    public String apply(Translation translation, Translation translation2) {
+                        return translation.returnString() + "&" + translation2.returnString();
+                    }
+                }).observeOn(AndroidSchedulers.mainThread())        // 在主线程里接收并处理数据
+                .subscribe(new Consumer<String>() {
+                    @Override
+                    public void accept(String s) {
+                        Log.i(TAG, "最终接收的数据结果为:" + s);
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(Throwable throwable) {
+                        Log.d(TAG, "网络请求失败");
+                    }
+                });
+    }
+
+    /**
+     * 模拟三级缓存的读取
+     */
+    private void threeCache() {
+        final String memoryCache = null;
+        final String diskCache = "从磁盘缓存中获取数据";
+
+        Observable memory = Observable.create(new ObservableOnSubscribe() {
+            @Override
+            public void subscribe(ObservableEmitter e) {
+                if (memoryCache != null) {
+                    e.onNext(memoryCache);
+                } else {
+                    e.onComplete();
+                }
+            }
+        });
+
+        Observable disk = Observable.create(new ObservableOnSubscribe() {
+            @Override
+            public void subscribe(ObservableEmitter e) {
+                if(diskCache != null) {
+                    e.onNext(diskCache);
+                } else {
+                    e.onComplete();
+                }
+            }
+        });
+
+        Observable net = Observable.just("网络获取");
+
+        Observable.concat(memory, disk, net)
+                .subscribe(new Observer() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onNext(Object value) {
+                        Log.i(TAG, value + "");
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.d(TAG, "失败");
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.d(TAG, "完成");
                     }
                 });
     }
