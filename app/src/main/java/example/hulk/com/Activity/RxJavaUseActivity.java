@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.jakewharton.retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import example.fastec.hulk.com.rxjava.R;
@@ -33,12 +34,19 @@ import retrofit2.converter.gson.GsonConverterFactory;
  * 实现网络请求的嵌套(比如注册+登录一步实现)       参考:https://www.jianshu.com/p/5f5d61f04f96
  * 实现合并数据源&同时展示                      参考:https://www.jianshu.com/p/fc2e551b907c
  * 模拟三级缓存读取                             参考:https://www.jianshu.com/p/6f3b6b934787
+ * 网络请求重新连接                             参考:https://www.jianshu.com/p/508c30aef0c1
  */
 public class RxJavaUseActivity extends AppCompatActivity {
 
     private static final String TAG = "devil";
     // 设置变量 = 模拟轮询服务器次数
     private int i = 0;
+    // 可重试次数
+    private int maxConnectCount = 5;
+    // 当前已重试次数
+    private int currentRetryCount = 0;
+    // 重试等待时间
+    private int waitRetryTime = 0;
 
     private Observable<Translation> observable;
     private Observable<Translation> observableRegister;
@@ -55,7 +63,8 @@ public class RxJavaUseActivity extends AppCompatActivity {
 //        conditionPull();
 //        nestRequest();
 //        mergeData();
-        threeCache();
+//        threeCache();
+        retryNetRequest();
     }
 
     private void createNet() {
@@ -140,7 +149,7 @@ public class RxJavaUseActivity extends AppCompatActivity {
     private void conditionPull() {
         observable.repeatWhen(new Function<Observable<Object>, ObservableSource<?>>() {
             @Override
-            public ObservableSource<?> apply(Observable<Object> objectObservable) throws Exception {
+            public ObservableSource<?> apply(Observable<Object> objectObservable) {
                 return objectObservable.flatMap(new Function<Object, ObservableSource<?>>() {
                     @Override
                     public ObservableSource<?> apply(Object o) throws Exception {
@@ -257,7 +266,7 @@ public class RxJavaUseActivity extends AppCompatActivity {
         Observable disk = Observable.create(new ObservableOnSubscribe() {
             @Override
             public void subscribe(ObservableEmitter e) {
-                if(diskCache != null) {
+                if (diskCache != null) {
                     e.onNext(diskCache);
                 } else {
                     e.onComplete();
@@ -287,6 +296,63 @@ public class RxJavaUseActivity extends AppCompatActivity {
                     @Override
                     public void onComplete() {
                         Log.d(TAG, "完成");
+                    }
+                });
+    }
+
+    /**
+     * 网络重连
+     */
+    private void retryNetRequest() {
+        observable.retryWhen(new Function<Observable<Throwable>, ObservableSource<?>>() {
+            @Override
+            public ObservableSource<?> apply(Observable<Throwable> throwableObservable) {
+                return throwableObservable.flatMap(new Function<Throwable, ObservableSource<?>>() {
+                    @Override
+                    public ObservableSource<?> apply(Throwable throwable) {
+                        // 输出异常信息
+                        Log.i(TAG, "发生异常 = " + throwable.toString());
+
+                        if (throwable instanceof IOException) {
+                            Log.i(TAG, "属于IO异常，需重试");
+
+                            if (currentRetryCount < maxConnectCount) {
+                                currentRetryCount++;
+                                Log.d(TAG, "重试次数=" + currentRetryCount);
+                                waitRetryTime = 1000 + currentRetryCount * 1000;
+                                Log.i(TAG, "重试时间=" + waitRetryTime);
+                                return Observable.just(1).delay(waitRetryTime, TimeUnit.MILLISECONDS);
+                            } else {
+                                return Observable.error(new Throwable("重试次数已经超过设置次数=" + currentRetryCount + "即不再重试"));
+                            }
+                        } else {
+                            return Observable.error(new Throwable("发生了非网络异常(非IO异常)"));
+                        }
+                    }
+                });
+            }
+        }).subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Observer<Translation>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onNext(Translation value) {
+                        Log.i(TAG, "发送成功");
+                        value.show();
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.i(TAG, e.toString());
+                    }
+
+                    @Override
+                    public void onComplete() {
+
                     }
                 });
     }

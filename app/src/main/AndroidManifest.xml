@@ -11,7 +11,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name="example.hulk.com.Activity.RxJavaUniteJudge">
+        <activity android:name="example.hulk.com.Activity.RxJavaUseActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -20,7 +20,7 @@
         </activity>
 
         <activity android:name="example.hulk.com.Activity.RxJavaBaseStudyActivity" />
-        <activity android:name="example.hulk.com.Activity.RxJavaUseActivity" />
+        <activity android:name="example.hulk.com.Activity.RxJavaUniteJudge" />
     </application>
 
 </manifest>
