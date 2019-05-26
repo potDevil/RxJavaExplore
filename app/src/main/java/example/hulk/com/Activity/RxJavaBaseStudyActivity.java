@@ -8,19 +8,19 @@ import android.util.Log;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import example.fastec.hulk.com.rxjava.R;
+import io.reactivex.Flowable;
+import io.reactivex.FlowableEmitter;
+import io.reactivex.FlowableOnSubscribe;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
-import io.reactivex.ObservableSource;
 import io.reactivex.Observer;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Consumer;
-import io.reactivex.functions.Function;
+
+import static io.reactivex.BackpressureStrategy.LATEST;
+import static io.reactivex.BackpressureStrategy.MISSING;
+import static io.reactivex.BackpressureStrategy.BUFFER;
 
 /**
  * rxJava学习参考：https://www.jianshu.com/p/e19f8ed863b1
@@ -29,15 +29,17 @@ public class RxJavaBaseStudyActivity extends AppCompatActivity {
 
     private Observable<Integer> observable;
     private Observer<Integer> observer;
+    private Flowable<Integer> flowable;
+    private Subscriber<Integer> subscriber;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-//        rxJavaInduction();
+        rxJavaInduction();
 //        rxJavaQuickCreate();
-        rxJavaConversion();
+//        rxJavaConversion();
 
     }
 
@@ -47,12 +49,18 @@ public class RxJavaBaseStudyActivity extends AppCompatActivity {
     private void rxJavaInduction() {
         createObservable();
         createObserver();
+
+//        Observable->observer
+//        Flowable->subscriber
+//        consumer则两个都可以
         observable.subscribe(observer);
+        flowable.subscribe(subscriber);
     }
 
     /**
      * 基本使用入门-创建被观察者
      */
+    @SuppressLint("CheckResult")
     private void createObservable() {
         // 创建一个被观察者
         observable = Observable.create(new ObservableOnSubscribe<Integer>() {
@@ -64,6 +72,16 @@ public class RxJavaBaseStudyActivity extends AppCompatActivity {
                 emitter.onComplete();
             }
         });
+
+        flowable = Flowable.create(new FlowableOnSubscribe<Integer>() {
+            @Override
+            public void subscribe(FlowableEmitter<Integer> emitter) throws Exception {
+                emitter.onNext(1);
+                emitter.onNext(2);
+                emitter.onNext(3);
+                emitter.onComplete();
+            }
+        }, MISSING);
 
         // 还可以通过以下方式创建观察者
         Observable<String> observable1 = Observable.just("A", "B", "C");
@@ -107,7 +125,7 @@ public class RxJavaBaseStudyActivity extends AppCompatActivity {
         };
 
         // 采用subscriber作为观察者对象
-        Subscriber<Integer> subscriber = new Subscriber<Integer>() {
+        subscriber = new Subscriber<Integer>() {
 
             @Override
             public void onSubscribe(Subscription s) {
