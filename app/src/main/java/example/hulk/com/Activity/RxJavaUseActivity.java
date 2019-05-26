@@ -1,5 +1,6 @@
 package example.hulk.com.Activity;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -152,7 +153,7 @@ public class RxJavaUseActivity extends AppCompatActivity {
             public ObservableSource<?> apply(Observable<Object> objectObservable) {
                 return objectObservable.flatMap(new Function<Object, ObservableSource<?>>() {
                     @Override
-                    public ObservableSource<?> apply(Object o) throws Exception {
+                    public ObservableSource<?> apply(Object o) {
                         if (i > 3) {
                             return Observable.error(new Throwable("轮询结束"));
                         }
@@ -189,6 +190,7 @@ public class RxJavaUseActivity extends AppCompatActivity {
     /**
      * 实现网络请求的嵌套
      */
+    @SuppressLint("CheckResult")
     private void nestRequest() {
         observableRegister.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -224,6 +226,7 @@ public class RxJavaUseActivity extends AppCompatActivity {
     /**
      * 实现合并数据源&同时展示
      */
+    @SuppressLint("CheckResult")
     private void mergeData() {
         Observable.zip(observableData, observableInformation,
                 new BiFunction<Translation, Translation, String>() {
